@@ -1,2 +1,2 @@
-# open-transformers
-My PyTorch-based implementation of Transformers.
+# Attensors
+PyTorch-based implementation of Transformers.
