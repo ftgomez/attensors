@@ -1,6 +1,7 @@
+import math
+
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 
 class MultiHeadAttention(nn.Module):
@@ -9,8 +10,8 @@ class MultiHeadAttention(nn.Module):
 
     Args:
         d_model (int): The dimension of the model
-        num_heads (int): Number of attention heads
-        dropout (float): Dropout probability
+        num_heads (int): The number of attention heads
+        dropout (float): Dropout rate
     """
 
     def __init__(self, d_model, num_heads, dropout=0.1):
@@ -20,51 +21,68 @@ class MultiHeadAttention(nn.Module):
         self.num_heads = num_heads
         self.head_dim = d_model // num_heads
 
-        self.query = nn.Linear(d_model, d_model)
-        self.key = nn.Linear(d_model, d_model)
-        self.value = nn.Linear(d_model, d_model)
-        self.fc_out = nn.Linear(d_model, d_model)
+        self.query_linear = nn.Linear(d_model, d_model)
+        self.key_linear = nn.Linear(d_model, d_model)
+        self.value_linear = nn.Linear(d_model, d_model)
 
+        self.output_linear = nn.Linear(d_model, d_model)
         self.dropout = nn.Dropout(dropout)
-        self.scale = torch.sqrt(torch.FloatTensor([self.head_dim]))
+        self.scale = math.sqrt(self.head_dim)
 
-    def forward(self, embedding, mask=None):
+    def split_heads(self, x, batch_size):
         """
-        Args:
-            embedding (torch.Tensor): Embedding tensor
-            of shape (seq_len, batch_size, d_model)
+        Split the last dimension into (num_heads, head_dim)
 
-            mask (torch.Tensor): Mask tensor indicating
-            which elements to mask out (optional)
+        Args:
+            x (torch.Tensor): Input tensor of shape (seq_len, batch_size, d_model)
+            batch_size (int): Batch size
+
+        Returns:
+            torch.Tensor: Split tensor
+            of shape (batch_size, num_heads, seq_len, head_dim)
+        """
+        return x.view(batch_size, -1, self.num_heads, self.head_dim).transpose(1, 2)
+
+    def forward(self, query, key, value, mask=None):
+        """
+        Forward pass of the Multi-Head Attention module
+
+        Args:
+            query (torch.Tensor): Query tensor of shape (seq_len_q, batch_size, d_model)
+            key (torch.Tensor): Key tensor of shape (seq_len_k, batch_size, d_model)
+            value (torch.Tensor): Value tensor of shape (seq_len_v, batch_size, d_model)
+            mask (torch.Tensor, optional): Mask tensor
+            of shape (batch_size, seq_len_q, seq_len_k). Defaults to None.
 
         Returns:
             torch.Tensor: Output tensor
-            of shape (seq_len, batch_size, d_model)
+            of shape (seq_len_q, batch_size, d_model)
 
-            and attention weights tensor
-            of shape (batch_size, num_heads, seq_len, seq_len)
+            torch.Tensor: Attention weights
+            of shape (batch_size, num_heads, seq_len_q, seq_len_k)
         """
-        batch_size = embedding.shape[1]
+        batch_size = query.size(1)
 
-        Q = self.query(embedding)
-        K = self.key(embedding)
-        V = self.value(embedding)
+        query = self.query_linear(query)
+        key = self.key_linear(key)
+        value = self.value_linear(value)
 
-        Q = Q.view(-1, batch_size, self.num_heads, self.head_dim).permute(0, 2, 1, 3)
-        K = K.view(-1, batch_size, self.num_heads, self.head_dim).permute(0, 2, 1, 3)
-        V = V.view(-1, batch_size, self.num_heads, self.head_dim).permute(0, 2, 1, 3)
+        query = self.split_heads(query, batch_size)
+        key = self.split_heads(key, batch_size)
+        value = self.split_heads(value, batch_size)
 
-        energy = torch.matmul(Q, K.permute(0, 1, 3, 2)) / self.scale
+        scores = torch.matmul(query, key.transpose(-2, -1)) / self.scale
 
         if mask is not None:
-            energy = energy.masked_fill(mask == 0, -1e10)
+            scores = scores.masked_fill(mask == 0, -1e9)
 
-        attention_weights = F.softmax(energy, dim=-1)
+        attention_weights = nn.functional.softmax(scores, dim=-1)
         attention_weights = self.dropout(attention_weights)
-        output = torch.matmul(attention_weights, V)
-        output = (
-            output.permute(0, 2, 1, 3).contiguous().view(-1, batch_size, self.d_model)
-        )
-        output = self.fc_out(output)
+
+        output = torch.matmul(attention_weights, value)
+
+        output = output.transpose(1, 2).contiguous().view(-1, batch_size, self.d_model)
+
+        output = self.output_linear(output)
 
         return output, attention_weights
