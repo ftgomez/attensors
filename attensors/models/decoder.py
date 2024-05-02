@@ -40,10 +40,10 @@ class DecoderLayer(nn.Module):
             of shape (seq_len, batch_size, d_model)
 
             self_mask (torch.Tensor): Mask tensor for self-attention
-            of shape (batch_size, seq_len, seq_len)
+            of shape (batch_size, num_heads, seq_len, seq_len)
 
             enc_mask (torch.Tensor): Mask tensor for encoder-decoder attention
-            of shape (batch_size, seq_len_enc, seq_len_dec)
+            of shape (batch_size, num_heads, seq_len_enc, seq_len_dec)
 
         Returns:
             torch.Tensor: Output tensor
@@ -74,7 +74,6 @@ class Decoder(nn.Module):
         num_heads (int): The number of attention heads
         ff_hidden_dim (int): The hidden dimension of the feedforward layer
         dropout (float): Dropout rate
-        max_len (int): Maximum sequence length for positional encoding
         vocab_size (int): Size of the vocabulary
     """
 
@@ -85,7 +84,6 @@ class Decoder(nn.Module):
         num_heads,
         ff_hidden_dim,
         dropout=0.1,
-        max_len=5000,
         vocab_size=None,
     ):
         super(Decoder, self).__init__()
@@ -109,10 +107,10 @@ class Decoder(nn.Module):
             of shape (seq_len, batch_size, d_model)
 
             self_mask (torch.Tensor): Mask tensor for self-attention
-            of shape (batch_size, seq_len, seq_len)
+            of shape (batch_size, num_heads, seq_len, seq_len)
 
             enc_mask (torch.Tensor): Mask tensor for encoder-decoder attention
-            of shape (batch_size, seq_len_enc, seq_len_dec)
+            of shape (batch_size, num_heads, seq_len_enc, seq_len_dec)
 
         Returns:
             torch.Tensor: Output tensor

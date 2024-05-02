@@ -3,9 +3,9 @@ import torch.nn as nn
 from attensors.layers import Embeddings, MultiHeadAttention
 
 
-class EncoderLayer(nn.Module):
+class GPTBlock(nn.Module):
     """
-    Single layer of the Transformer Encoder
+    Single layer of the GPT architecture
 
     Args:
         d_model (int): The dimension of the model
@@ -15,8 +15,8 @@ class EncoderLayer(nn.Module):
     """
 
     def __init__(self, d_model, num_heads, ff_hidden_dim, dropout=0.1):
-        super(EncoderLayer, self).__init__()
-        self.self_attention = MultiHeadAttention(d_model, num_heads, dropout)
+        super(GPTBlock, self).__init__()
+        self.attention = MultiHeadAttention(d_model, num_heads, dropout)
         self.ffn = nn.Sequential(
             nn.Linear(d_model, ff_hidden_dim),
             nn.ReLU(),
@@ -28,19 +28,22 @@ class EncoderLayer(nn.Module):
 
     def forward(self, x, mask):
         """
-        Forward pass of the EncoderLayer
+        Forward pass of the GPTBlock
 
         Args:
-            x (torch.Tensor): Input tensor of shape (seq_len, batch_size, d_model)
-            mask (torch.Tensor): Mask tensor
+            x (torch.Tensor): Input tensor
+            of shape (seq_len, batch_size, d_model)
+
+            mask (torch.Tensor): Mask tensor for decoder attention
             of shape (batch_size, num_heads, seq_len, seq_len)
 
         Returns:
-            torch.Tensor: Output tensor of shape (seq_len, batch_size, d_model)
+            torch.Tensor: Output tensor
+            of shape (seq_len, batch_size, d_model)
         """
-        attention_output, _ = self.self_attention(x, x, x, mask)
-        attention_output = self.dropout(attention_output)
-        x = self.layer_norm1(x + attention_output)
+        attention_output, _ = self.attention(x, x, x, mask)
+        self_attention_output = self.dropout(attention_output)
+        x = self.layer_norm1(x + self_attention_output)
         ffn_output = self.ffn(x)
         ffn_output = self.dropout(ffn_output)
         x = self.layer_norm2(x + ffn_output)
@@ -48,12 +51,12 @@ class EncoderLayer(nn.Module):
         return x
 
 
-class Encoder(nn.Module):
+class GPT(nn.Module):
     """
-    Transformer Encoder module with embeddings and positional encoding
+    GPT model
 
     Args:
-        num_layers (int): Number of encoder layers
+        num_layers (int): Number of decoder layers
         d_model (int): The dimension of the model
         num_heads (int): The number of attention heads
         ff_hidden_dim (int): The hidden dimension of the feedforward layer
@@ -70,29 +73,36 @@ class Encoder(nn.Module):
         dropout=0.1,
         vocab_size=None,
     ):
-        super(Encoder, self).__init__()
+        super(GPT, self).__init__()
         self.embedding = Embeddings(vocab_size, d_model)
-        self.encoder_layers = nn.ModuleList(
+        self.gpt_blocks = nn.ModuleList(
             [
-                EncoderLayer(d_model, num_heads, ff_hidden_dim, dropout)
+                GPTBlock(d_model, num_heads, ff_hidden_dim, dropout)
                 for _ in range(num_layers)
             ]
         )
+        self.output_linear = nn.Linear(d_model, vocab_size)
+        self.softmax = nn.Softmax(dim=-1)
 
-    def forward(self, x, mask):
+    def forward(self, trg, trg_mask):
         """
-        Forward pass of the Encoder module
+        Forward pass of the GPT model.
 
         Args:
-            x (torch.Tensor): Input tensor of shape (seq_len, batch_size)
-            mask (torch.Tensor): Mask tensor
-            of shape (batch_size, num_heads, seq_len, seq_len)
+            trg (torch.Tensor): Input tensor to the decoder representing token indices.
+            trg_mask (torch.Tensor): Mask tensor for target sequence.
 
         Returns:
-            torch.Tensor: Output tensor of shape (seq_len, batch_size, d_model)
+            torch.Tensor: Output tensor from the decoder.
+            Shape (seq_len, batch_size, vocab_size)
         """
-        embedded = self.embedding(x)
-        x = embedded
-        for encoder_layer in self.encoder_layers:
-            x = encoder_layer(x, mask)
+
+        x = self.embedding(trg)
+
+        for gpt_block in self.gpt_blocks:
+            x = gpt_block(x, trg_mask)
+
+        x = self.output_linear(x)
+        x = self.softmax(x)
+
         return x

@@ -52,7 +52,7 @@ class MultiHeadAttention(nn.Module):
             key (torch.Tensor): Key tensor of shape (seq_len_k, batch_size, d_model)
             value (torch.Tensor): Value tensor of shape (seq_len_v, batch_size, d_model)
             mask (torch.Tensor, optional): Mask tensor
-            of shape (batch_size, seq_len_q, seq_len_k). Defaults to None.
+            of shape (batch_size, num_heads, seq_len_q, seq_len_k). Defaults to None.
 
         Returns:
             torch.Tensor: Output tensor
