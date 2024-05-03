@@ -41,7 +41,7 @@ class MultiHeadAttention(nn.Module):
             torch.Tensor: Split tensor
             of shape (batch_size, num_heads, seq_len, head_dim)
         """
-        return x.view(batch_size, -1, self.num_heads, self.head_dim).transpose(1, 2)
+        return x.reshape(x.size(0), x.size(1), -1, 2).transpose(0, 2).transpose(0, 1)
 
     def forward(self, query, key, value, mask=None):
         """
@@ -61,6 +61,7 @@ class MultiHeadAttention(nn.Module):
             torch.Tensor: Attention weights
             of shape (batch_size, num_heads, seq_len_q, seq_len_k)
         """
+        seq_len = query.size(0)
         batch_size = query.size(1)
 
         query = self.query_linear(query)
@@ -81,7 +82,7 @@ class MultiHeadAttention(nn.Module):
 
         output = torch.matmul(attention_weights, value)
 
-        output = output.transpose(1, 2).contiguous().view(-1, batch_size, self.d_model)
+        output = output.permute(2, 0, 1, 3).reshape(seq_len, batch_size, self.d_model)
 
         output = self.output_linear(output)
 
