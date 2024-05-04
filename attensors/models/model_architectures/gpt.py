@@ -62,6 +62,7 @@ class GPT(nn.Module):
         ff_hidden_dim (int): The hidden dimension of the feedforward layer
         dropout (float): Dropout rate
         vocab_size (int): Size of the vocabulary
+        max_len (int): Max sequence length
     """
 
     def __init__(
@@ -72,9 +73,10 @@ class GPT(nn.Module):
         ff_hidden_dim,
         dropout=0.1,
         vocab_size=None,
+        max_len=5000,
     ):
         super(GPT, self).__init__()
-        self.embedding = Embeddings(vocab_size, d_model)
+        self.embedding = Embeddings(vocab_size, d_model, max_len)
         self.gpt_blocks = nn.ModuleList(
             [
                 GPTBlock(d_model, num_heads, ff_hidden_dim, dropout)
@@ -96,6 +98,10 @@ class GPT(nn.Module):
             torch.Tensor: Output tensor from the decoder.
             Shape (seq_len, batch_size, vocab_size)
         """
+
+        assert (
+            trg.size(0) <= self.max_len
+        ), "The input sequence length exceeds the maximum length allowed"
 
         x = self.embedding(trg)
 
