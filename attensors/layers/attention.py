@@ -29,7 +29,7 @@ class MultiHeadAttention(nn.Module):
         self.dropout = nn.Dropout(dropout)
         self.scale = math.sqrt(self.head_dim)
 
-    def split_heads(self, x, batch_size):
+    def split_heads(self, x):
         """
         Split the last dimension into (num_heads, head_dim)
 
@@ -68,9 +68,9 @@ class MultiHeadAttention(nn.Module):
         key = self.key_linear(key)
         value = self.value_linear(value)
 
-        query = self.split_heads(query, batch_size)
-        key = self.split_heads(key, batch_size)
-        value = self.split_heads(value, batch_size)
+        query = self.split_heads(query)
+        key = self.split_heads(key)
+        value = self.split_heads(value)
 
         scores = torch.matmul(query, key.transpose(-2, -1)) / self.scale
 
