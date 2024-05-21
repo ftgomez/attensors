@@ -6,8 +6,8 @@ class BPETokenizer:
     def __init__(self, vocab=None, vocab_size=10000):
         if vocab is None:
             self.vocab_size = vocab_size
-            self.vocab = {}
-            self.reverse_vocab = {}
+            self.vocab = {"<PAD>": 0}
+            self.reverse_vocab = {0: "<PAD>"}
 
         else:
             self.vocab = vocab
@@ -37,8 +37,8 @@ class BPETokenizer:
             current_tokens = new_tokens
 
         for i, token in enumerate(token_list):
-            self.vocab[token] = i
-            self.reverse_vocab[i] = token
+            self.vocab[token] = i + 1
+            self.reverse_vocab[i + 1] = token
 
     def get_pairs(self, current_tokens):
         grouped_list = []
