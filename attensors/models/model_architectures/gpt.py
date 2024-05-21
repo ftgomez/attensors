@@ -85,6 +85,7 @@ class GPT(nn.Module):
         )
         self.output_linear = nn.Linear(d_model, vocab_size)
         self.softmax = nn.Softmax(dim=-1)
+        self.max_len = max_len
 
     def forward(self, trg, trg_mask):
         """
