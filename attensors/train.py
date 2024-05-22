@@ -129,7 +129,7 @@ def generate_text(model, tokenizer, start_text, max_length, device, d_model):
             torch.triu(
                 torch.ones(
                     batch_size,
-                    int(d_model / num_heads),
+                    num_heads,
                     seq_len,
                     seq_len,
                     device=device,
