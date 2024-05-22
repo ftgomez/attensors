@@ -41,7 +41,11 @@ class MultiHeadAttention(nn.Module):
             torch.Tensor: Split tensor
             of shape (batch_size, num_heads, seq_len, head_dim)
         """
-        return x.reshape(x.size(0), x.size(1), -1, 2).transpose(0, 2).transpose(0, 1)
+        seq_len, batch_size, _ = x.size()
+        tensor = x.view(seq_len, batch_size, self.num_heads, self.head_dim)
+        tensor = tensor.permute(1, 2, 0, 3)
+
+        return tensor
 
     def forward(self, query, key, value, mask=None):
         """
